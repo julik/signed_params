@@ -18,6 +18,8 @@ class SignedParams
     # Returns the same result as the one url_for does but also signs the parameters
     def signed_url_for(options)
       canonical_options = rewrite_options(options)
+      canonical_options[:controller] ||= controller_name
+      
       SignedParams.sign!(canonical_options)
       url_for(canonical_options)
     end
@@ -28,6 +30,7 @@ class SignedParams
     #  require_signed_parameters :only => [:send_confidential_email]
     def require_signed_parameters(*filter_options)
       before_filter(*filter_options) do | c |
+        puts "Got params " + c.params.inspect if c.params["send_mail"]
          begin
            SignedParams.verify!(c.params)
          rescue SignedParams::Tampered
@@ -58,7 +61,7 @@ class SignedParams
 
     # Check a signed hash for authenticity
     def verify!(ha)
-      passed_signature = ha.delete(:sig)
+      passed_signature = ha.delete(:sig) || ha.delete("sig")
       raise Tampered, "No signature given" unless passed_signature
       raise Tampered, "Checksum differs" unless compute_checksum(ha) == passed_signature.to_s
       true

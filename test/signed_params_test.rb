@@ -9,7 +9,7 @@ require 'action_controller'
 require 'action_controller/test_process'
 require File.dirname(__FILE__)  + '/../init'
 
-ActionController::Routing::Routes.draw do |map|
+$routes = ActionController::Routing::Routes.draw do |map|
   map.connect ':controller/:action/:id'
 end
 
@@ -146,6 +146,9 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     @controller.logger = Logger.new(StringIO.new)
     @request = ActionController::TestRequest.new
     @response = ActionController::TestResponse.new
+    ctr = {:controller => "bogus", :action => "checked_action"}
+    
+    @controller.instance_variable_set("@url", ActionController::UrlRewriter.new(@request, {}))
   end
 
   def test_filter_enables_protection
@@ -182,5 +185,35 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     get :checked_action, signed
     assert_response 404
     
+  end
+  
+  def test_signed_url_for_uses_canonicalized_url
+    canonical_params = {
+      "action" => "checked_action",
+      "controller" => "bogus",
+      "send_mail" => "yes"
+    }
+    SignedParams.sign!(canonical_params)
+    generated = @controller.send(:signed_url_for, :send_mail => "yes", :action => 'checked_action')
+    
+    assert_equal "http://test.host/bogus/checked_action?send_mail=yes&sig=06b36a9d742afa276715a95af33627141489a1f8",
+      generated
+  end
+  
+  def test_url_roundtrip
+    canonical_params = {
+      "action" => "checked_action",
+      "controller" => "bogus",
+      "send_mail" => "yes"
+    }
+    SignedParams.sign!(canonical_params)
+    puts "Canonical " + canonical_params.inspect
+   
+    assert_nothing_raised do
+      BogusController.require_signed_parameters :only => :checked_action
+    end
+    
+    get :checked_action, :send_mail => "yes", :sig => canonical_params[:sig]
+    assert_response :success
   end
 end
