@@ -17,6 +17,8 @@ arose from that)
 
 Well you gotta have inspiration. http://aaugh.com/imageabuse.html
 
+== How to
+
 First define a salt in your environment
   
   SignedParams.salt = "This is something NOBODY must know"
