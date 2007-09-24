@@ -13,13 +13,14 @@ class SignedParams
     OpenSSL::HMAC.hexdigest(OpenSSL::Digest::Digest.new(digest_type), signer.salt, payload)
   end
   
+  CLEAR_OPTIONS = %w(sig controller action)
+  
   module ControllerInstanceMethods
     protected
     # Returns the same result as the one url_for does but also signs the parameters
     def signed_url_for(options)
       canonical_options = rewrite_options(options)
-      canonical_options[:controller] ||= controller_name
-      
+      canonical_options[:controller] ||= controller_path
       SignedParams.sign!(canonical_options)
       url_for(canonical_options)
     end
@@ -60,7 +61,7 @@ class SignedParams
 
     # Check a signed hash for authenticity
     def verify!(ha)
-      passed_signature = ha.delete(:sig) || ha.delete("sig")
+      passed_signature = ha[:sig] || ha["sig"]
       raise Tampered, "No signature given" unless passed_signature
       raise Tampered, "Checksum differs" unless compute_checksum(ha) == passed_signature.to_s
       true
@@ -70,16 +71,12 @@ class SignedParams
       # Compute the cheksum of a hash in such a way that the checksum of it's options in textual form will match
       def compute_checksum(h)
         begin
-          ret, old_sig = h.has_key?(:sig), h.delete(:sig)
-          marshaled = ActionController::Routing::Route.new.build_query_string(h)
-          
-          # QS generator swallows the id so we add it back
-          marshaled += "&id=#{h[:id]}" if h[:id]
+          signed_h = h.dup.with_indifferent_access
+          CLEAR_OPTIONS.map{|o| signed_h.delete(o) }
+          marshaled = ActionController::Routing::Route.new.build_query_string(signed_h)
           marshaled = marshaled.gsub(/^\?/, '').split(/&/).sort.join('=')
-          
           digest.call(self, Base64.encode64(marshaled.to_s.reverse)).to_s
         ensure
-          h[:sig] = old_sig if ret
         end
       end
   end # SignedParams

@@ -15,7 +15,13 @@ end
 
 class SignedParamsDigestingTest < Test::Unit::TestCase
   def setup
+    @old_salt = SignedParams.salt
     SignedParams.salt = "_zis_is_mai_sikret"
+  end
+  
+  def teardown
+    SignedParams.salt = @old_salt
+    super
   end
   
   def test_existence
@@ -41,12 +47,18 @@ class SignedParamsDigestingTest < Test::Unit::TestCase
     assert @data.has_key?(:sig), "Now it is signed"
     
     @other_data = {:bar => 2, :baz => [1,2,3], :foo => 1 }
+    @other_data_with_intrinsics = {:action => 'doo', :controller => 'x',
+      :bar => 2, :baz => [1,2,3], :foo => 1 }
     
     SignedParams.sign!(@other_data)
+    SignedParams.sign!(@other_data_with_intrinsics)
     assert @other_data.has_key?(:sig), "Now it is signed"
+    assert @other_data_with_intrinsics.has_key?(:sig), "Now it is signed"
 
     ref_digest = "10a72e7e0a1893ca36622bbbd21412d5d699d5c3"
     assert_equal ref_digest, SignedParams.send(:compute_checksum, @other_data), "The proper digest should be generated"
+    assert_equal ref_digest, SignedParams.send(:compute_checksum, @other_data_with_intrinsics),
+      "The proper digest should be generated, without any honor for :action and :controller"
     assert_equal ref_digest, SignedParams.send(:compute_checksum, @data), "The proper digest should be generated"
     
     assert SignedParams.verify!(@other_data)
@@ -70,6 +82,7 @@ class SignedParamsDigestingTest < Test::Unit::TestCase
     mocked_rewrite = flexmock()
     mocked_rewrite.should_receive(:build_query_string).at_least.once.with(sample_hash).and_return("?foo=bar")
     flexmock(ActionController::Routing::Route).should_receive(:new).at_least.once.and_return(mocked_rewrite)
+    
     SignedParams.sign!(sample_hash)
   end
   
@@ -99,7 +112,7 @@ class SignedParamsDigestingTest < Test::Unit::TestCase
     @data = {:a => 12, :b => 145}
     SignedParams.sign!(@data)
     assert SignedParams.verify!(@data)
-    assert !@data.has_key?(:sig), "After verification the signature has to be removed from the hash"
+    assert @data.has_key?(:sig), "After verification the signature has to stay"
     
     SignedParams.sign!(@data)
     
@@ -152,8 +165,11 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
   end
 
   def test_filter_enables_protection
-    params = {:foo => "baz"}
-    canonical_params = {"action"=>"checked_action", "controller"=>"bogus", "foo"=>"baz"}
+    params = {:foo => "baz", :sig=>"1eb451a548196f527ff549b6836cc5a51d4a4250"}
+    canonical_params = {
+      "sig"=>"1eb451a548196f527ff549b6836cc5a51d4a4250",
+      "action"=>"checked_action", "controller"=>"bogus", "foo"=>"baz"
+    }
     
     get :checked_action, params
     assert_response :success
@@ -196,29 +212,41 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     SignedParams.sign!(canonical_params)
     generated = @controller.send(:signed_url_for, :send_mail => "yes", :action => 'checked_action')
     
-    assert_qs_equal "http://test.host/bogus/checked_action?send_mail=yes&sig=06b36a9d742afa276715a95af33627141489a1f8",
+    assert_qs_equal "http://test.host/bogus/checked_action?send_mail=yes&sig=8b11c39b96f7f4aecf432ccca756b9a5d381acd3",
       generated
   end
   
   def test_url_roundtrip
-    canonical_params = {
-      "action" => "checked_action",
-      "controller" => "bogus",
-      "send_mail" => "yes"
-    }
-    SignedParams.sign!(canonical_params)
-   
-    assert_nothing_raised do
-      BogusController.require_signed_parameters :only => :checked_action
-    end
+    begin
+      $lg = true
+      canonical_params = {
+        "action" => "checked_action",
+        "controller" => "bogus",
+        "send_mail" => 1
+      }
     
-    get :checked_action, :send_mail => "yes", :sig => canonical_params[:sig]
-    assert_response :success
+      canonical_params_actual = {
+        "send_mail" => 1
+      }
+    
+      SignedParams.sign!(canonical_params)
+      SignedParams.sign!(canonical_params_actual)
+      assert_equal canonical_params[:sig], canonical_params_actual[:sig]
+    
+      assert_nothing_raised do
+        BogusController.require_signed_parameters :only => :checked_action
+      end
+    
+      get :checked_action, :send_mail => 1, :sig => canonical_params[:sig]
+      assert_response :success
+    ensure
+      $lg = false
+    end
   end
   
   private
     def assert_qs_equal(ref, actual, message = nil) 
-      [ref, actual].map! do | urie |
+      ref, actual = [ref, actual].map do | urie |
         begin
           ps = URI.parse(urie)
           ps.query = ps.query.split('&').sort.join('&')
