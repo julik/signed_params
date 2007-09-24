@@ -74,7 +74,7 @@ class SignedParams
           signed_h = h.dup.with_indifferent_access
           CLEAR_OPTIONS.map{|o| signed_h.delete(o) }
           marshaled = ActionController::Routing::Route.new.build_query_string(signed_h)
-          marshaled = marshaled.gsub(/^\?/, '').split(/&/).sort.join('=')
+          marshaled = marshaled.gsub(/^\?/, '').split(/&/).sort.join('&')
           digest.call(self, Base64.encode64(marshaled.to_s.reverse)).to_s
         ensure
         end

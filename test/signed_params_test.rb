@@ -55,7 +55,7 @@ class SignedParamsDigestingTest < Test::Unit::TestCase
     assert @other_data.has_key?(:sig), "Now it is signed"
     assert @other_data_with_intrinsics.has_key?(:sig), "Now it is signed"
 
-    ref_digest = "10a72e7e0a1893ca36622bbbd21412d5d699d5c3"
+    ref_digest = "8238a35f4f4f4a8a26e4fca9f0b6ef980f871022"
     assert_equal ref_digest, SignedParams.send(:compute_checksum, @other_data), "The proper digest should be generated"
     assert_equal ref_digest, SignedParams.send(:compute_checksum, @other_data_with_intrinsics),
       "The proper digest should be generated, without any honor for :action and :controller"
@@ -217,31 +217,28 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
   end
   
   def test_url_roundtrip
-    begin
-      $lg = true
-      canonical_params = {
-        "action" => "checked_action",
-        "controller" => "bogus",
-        "send_mail" => 1
-      }
-    
-      canonical_params_actual = {
-        "send_mail" => 1
-      }
-    
-      SignedParams.sign!(canonical_params)
-      SignedParams.sign!(canonical_params_actual)
-      assert_equal canonical_params[:sig], canonical_params_actual[:sig]
-    
-      assert_nothing_raised do
-        BogusController.require_signed_parameters :only => :checked_action
-      end
-    
-      get :checked_action, :send_mail => 1, :sig => canonical_params[:sig]
-      assert_response :success
-    ensure
-      $lg = false
+    canonical_params = {
+      "action" => "checked_action",
+      "controller" => "bogus",
+      "kilo" => "papa",
+      "send_mail" => 1
+    }
+  
+    canonical_params_actual = {
+      "send_mail" => 1,
+      "kilo" => "papa"
+    }
+  
+    SignedParams.sign!(canonical_params)
+    SignedParams.sign!(canonical_params_actual)
+    assert_equal canonical_params[:sig], canonical_params_actual[:sig]
+  
+    assert_nothing_raised do
+      BogusController.require_signed_parameters :only => :checked_action
     end
+  
+    get :checked_action, :send_mail => 1, :sig => canonical_params[:sig], :kilo => :papa
+    assert_response :success
   end
   
   private
