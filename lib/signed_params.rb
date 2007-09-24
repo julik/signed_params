@@ -30,14 +30,13 @@ class SignedParams
     #  require_signed_parameters :only => [:send_confidential_email]
     def require_signed_parameters(*filter_options)
       before_filter(*filter_options) do | c |
-        puts "Got params " + c.params.inspect if c.params["send_mail"]
-         begin
-           SignedParams.verify!(c.params)
-         rescue SignedParams::Tampered
-           c.logger.error "Request parameters possibly tampered!"
-           c.render :status => 404, :text => "No such page"
-           false
-         end
+        begin
+          SignedParams.verify!(c.params)
+        rescue SignedParams::Tampered
+          c.logger.error "Request parameters possibly tampered!"
+          c.render :status => 404, :text => "No such page"
+          false
+        end
       end
     end
   end

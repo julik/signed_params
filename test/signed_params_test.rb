@@ -196,7 +196,7 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     SignedParams.sign!(canonical_params)
     generated = @controller.send(:signed_url_for, :send_mail => "yes", :action => 'checked_action')
     
-    assert_equal "http://test.host/bogus/checked_action?send_mail=yes&sig=06b36a9d742afa276715a95af33627141489a1f8",
+    assert_qs_equal "http://test.host/bogus/checked_action?send_mail=yes&sig=06b36a9d742afa276715a95af33627141489a1f8",
       generated
   end
   
@@ -207,7 +207,6 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
       "send_mail" => "yes"
     }
     SignedParams.sign!(canonical_params)
-    puts "Canonical " + canonical_params.inspect
    
     assert_nothing_raised do
       BogusController.require_signed_parameters :only => :checked_action
@@ -216,4 +215,18 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     get :checked_action, :send_mail => "yes", :sig => canonical_params[:sig]
     assert_response :success
   end
+  
+  private
+    def assert_qs_equal(ref, actual, message = nil) 
+      [ref, actual].map! do | urie |
+        begin
+          ps = URI.parse(urie)
+          ps.query = ps.query.split('&').sort.join('&')
+          ps.to_s
+        rescue URI::InvalidURIError => e
+          fail "#{urie} was not a valid url"
+        end
+      end
+      assert_equal ref, actual, message
+    end
 end
