@@ -68,7 +68,9 @@ class SignedParams
     end
   
     private
-      # Compute the cheksum of a hash in such a way that the checksum of it's options in textual form will match
+      # Compute the cheksum of a hash in such a way that the checksum of it's options
+      # in textual form stays the same independently of where the hash came from.
+      # Considering that the keys in Ruby hashes are unordered this is non-trivial to guarantee
       def compute_checksum(h)
         begin
           signed_h = h.dup.with_indifferent_access
