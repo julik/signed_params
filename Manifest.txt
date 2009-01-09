@@ -1,7 +1,9 @@
+History.txt
 Manifest.txt
-README
+README.txt
 Rakefile
 init.rb
 lib/signed_params.rb
 lib/version.rb
+signed_params.gemspec
 test/test_signed_params.rb
