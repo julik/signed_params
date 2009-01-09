@@ -1,9 +1,9 @@
 require 'openssl'
 require 'base64'
-
+require File.dirname(__FILE__) + '/version'
 
 class SignedParams
-
+  
   class NoKey < RuntimeError; end
   class Tampered < RuntimeError; end
   

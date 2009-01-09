@@ -1,0 +1,7 @@
+Manifest.txt
+README
+Rakefile
+init.rb
+lib/signed_params.rb
+lib/version.rb
+test/test_signed_params.rb
