@@ -55,7 +55,7 @@ class SignedParamsDigestingTest < Test::Unit::TestCase
     assert @other_data.has_key?(:sig), "Now it is signed"
     assert @other_data_with_intrinsics.has_key?(:sig), "Now it is signed"
 
-    ref_digest = "8238a35f4f4f4a8a26e4fca9f0b6ef980f871022"
+    ref_digest = "d6686515964f34fb87bad85e52c3ddc2ffc2b29f"
     assert_equal ref_digest, SignedParams.send(:compute_checksum, @other_data), "The proper digest should be generated"
     assert_equal ref_digest, SignedParams.send(:compute_checksum, @other_data_with_intrinsics),
       "The proper digest should be generated, without any honor for :action and :controller"
@@ -142,11 +142,11 @@ end
 
 class BogusController < ActionController::Base
   def checked_action
-    render :nothing => true
+    render :text => "This is a checked action"
   end
   
   def unchecked_action
-    render :nothing => true
+    render :text => "This is an unchecked action"
   end
   def rescue_action(e); raise e; end
   
@@ -196,8 +196,7 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     assert_response 200
     assert_equal( canonical_params, @controller.params)
     
-    signed[:sig] = "foobarbazdo"
-    
+    signed["sig"] = "foobarbazdo"
     get :checked_action, signed
     assert_response 404
     

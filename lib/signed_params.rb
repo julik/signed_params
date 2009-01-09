@@ -35,7 +35,7 @@ class SignedParams
           SignedParams.verify!(c.params)
         rescue SignedParams::Tampered
           c.logger.error "Request parameters possibly tampered!"
-          c.render :status => 404, :text => "No such page"
+          c.send(:render, :status => 404, :text => "No such page")
           false
         end
       end
@@ -51,7 +51,7 @@ class SignedParams
     
     # Should return the proc used for digest generation
     def digest
-      @digest || DEFAULT_DIGEST_PROC
+      @digest ||= DEFAULT_DIGEST_PROC
     end
     
     # Compute the checksum of the hash and save it into the :sig slot. The signature also gets returned.
