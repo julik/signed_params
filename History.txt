@@ -1,3 +1,8 @@
+=== 0.1.2 / 2009-01-13
+
+* Ignore only_path when signing
+
+
 === 0.1.1 / 2009-01-09
 
 * 1 major enhancement
