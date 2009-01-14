@@ -13,7 +13,8 @@ class SignedParams
     OpenSSL::HMAC.hexdigest(OpenSSL::Digest::Digest.new(digest_type), signer.salt, payload)
   end
   
-  CLEAR_OPTIONS = %w(sig controller action)
+  # Options for url_for that will be exempt from affecting the signature
+  CLEAR_OPTIONS = %w(sig controller action only_path)
   
   module ControllerInstanceMethods
     protected

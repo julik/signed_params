@@ -199,7 +199,6 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
     signed["sig"] = "foobarbazdo"
     get :checked_action, signed
     assert_response 404
-    
   end
   
   def test_signed_url_for_uses_canonicalized_url
@@ -208,11 +207,31 @@ class SignedParamsControllerIntegrationTest < Test::Unit::TestCase
       "controller" => "bogus",
       "send_mail" => "yes"
     }
+
     SignedParams.sign!(canonical_params)
     generated = @controller.send(:signed_url_for, :send_mail => "yes", :action => 'checked_action')
     
     assert_qs_equal "http://test.host/bogus/checked_action?send_mail=yes&sig=8b11c39b96f7f4aecf432ccca756b9a5d381acd3",
       generated
+  end
+  
+  def test_only_path_exempt_from_signing
+    options_a = {
+      :foo => 2,
+      :bar => 4,
+    }
+
+    options_b = {
+      :foo => 2,
+      :bar => 4,
+      :only_path => true,
+    }
+    
+    SignedParams.sign!(options_a)
+    SignedParams.sign!(options_b)
+    
+    assert_equal options_a[:sig], options_b[:sig]
+    
   end
   
   def test_url_roundtrip
